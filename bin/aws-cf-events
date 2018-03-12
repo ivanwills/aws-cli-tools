@@ -70,6 +70,12 @@ sub main {
 
     # do stuff here
     my %seen;
+    my @fields = qw/Time Status ResourceType LogicalResourceId/;
+    push @fields, 'ResourceStatusReason' if $option{verbose};
+    my %max    = map { $_ => length $_ } @fields;
+    my @datefilds = qw/year month day hour minute second/;
+    my $last_stack;
+
     do {
         if ( $option{child} ) {
             my @names;
@@ -82,12 +88,7 @@ sub main {
             $option{stack_name} = \@names;
         }
 
-        my @fields = qw/Time Status ResourceType LogicalResourceId/;
-        push @fields, 'ResourceStatusReason' if $option{verbose};
-        my %max    = map { $_ => length $_ } @fields;
-        my @datefilds = qw/year month day hour minute second/;
         my $count = 0;
-        my $last_stack;
 
         for my $stack_name (@{ $option{stack_name} }) {
             my $events = get_events($stack_name, $option{max_events});
