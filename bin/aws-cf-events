@@ -20,12 +20,14 @@ use FindBin qw/$Bin/;
 use Path::Tiny;
 use JSON::XS qw/decode_json/;
 use DateTime;
+use DateTime::TimeZone;
 use Term::ANSIColor qw/colored/;
 
 our $VERSION = version->new('0.0.1');
 my ($name)   = $PROGRAM_NAME =~ m{^.*/(.*?)$}mxs;
 
 my %option = (
+    timezone   => DateTime::TimeZone->new( name => "local" )->name,
     max_events => 20,
     sleep      => 5,
     verbose    => 0,
@@ -45,12 +47,13 @@ sub main {
     Getopt::Long::Configure('bundling');
     GetOptions(
         \%option,
-        'stack_name|stack-name|n=s@',
-        'max_events|max-events|m=i',
-        'child|child-stacks|c!',
-        'watch|w!',
-        'sleep|s=i',
         'between|b=s',
+        'child|child-stacks|c!',
+        'max_events|max-events|m=i',
+        'sleep|s=i',
+        'stack_name|stack-name|n=s@',
+        'timezone|t=s',
+        'watch|w!',
         'verbose|v+',
         'man',
         'help',
@@ -100,7 +103,7 @@ sub main {
 
             for my $event (@{ $events->{StackEvents} }) {
                 my @time = (split /\D/, $event->{Timestamp})[0 .. 5];
-                my $date = DateTime->new((zip @datefilds, @time), time_zone => "UTC")->set_time_zone("Australia/Sydney");
+                my $date = DateTime->new((zip @datefilds, @time), time_zone => "UTC")->set_time_zone($option{timezone});
                 $event->{Time} = $date->hms;
                 $event->{Day} = $date->ymd;
 
