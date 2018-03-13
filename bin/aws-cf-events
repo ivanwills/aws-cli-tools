@@ -80,12 +80,13 @@ sub main {
     my $last_stack;
 
     do {
+        my $start = time;
         if ( $option{child} ) {
             my @names;
             for my $stack_name (@{ $option{stack_name} }) {
                 my $parent_id = `aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[].StackId' --output text`;
                 chomp $parent_id;
-                my @children  = split /\s+/xms, ''.`aws cloudformation describe-stacks --query 'Stacks[?ParentId==\`$parent_id\`].StackName' --output text`;
+                my @children  = split /\s+/xms, ''.`aws cloudformation describe-stacks --query 'Stacks[?ParentId==\`$parent_id\`].StackName' --output text 2>/dev/nul`;
                 push @names, $stack_name, @children;
             }
             $option{stack_name} = \@names;
@@ -161,8 +162,9 @@ sub main {
             $last_stack = $stack_name;
         }
 
-        if ( $option{watch} ) {
-            sleep $option{sleep};
+        # sleep if watching and if we would sleep for some time
+        if ( $option{watch} && ( $option{sleep} - (time - $start) > 0) ) {
+            sleep $option{sleep} - (time - $start);
             print {*STDERR} '.';
         }
 
@@ -184,7 +186,7 @@ sub get_events {
     }
 
     my $cmd    = join ' ', @cmd;
-    my $json   = `$cmd`;
+    my $json   = `$cmd 2>/dev/nul`;
     my $events = decode_json($json);
 
     while ( my $next_token = $events->{NextToken} ) {
