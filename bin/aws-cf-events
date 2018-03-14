@@ -50,6 +50,7 @@ sub main {
         'between|b=s',
         'child|child-stacks|c!',
         'max_events|max-events|m=i',
+        'reverse|r',
         'sleep|s=i',
         'stack_name|stack-name|n=s@',
         'timezone|t=s',
@@ -86,7 +87,7 @@ sub main {
             for my $stack_name (@{ $option{stack_name} }) {
                 my $parent_id = `aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[].StackId' --output text`;
                 chomp $parent_id;
-                my @children  = split /\s+/xms, ''.`aws cloudformation describe-stacks --query 'Stacks[?ParentId==\`$parent_id\`].StackName' --output text 2>/dev/nul`;
+                my @children  = split /\s+/xms, ''.`aws cloudformation describe-stacks --query 'Stacks[?ParentId==\`$parent_id\`].StackName' --output text 2>/dev/null`;
                 push @names, $stack_name, @children;
             }
             $option{stack_name} = \@names;
@@ -97,10 +98,6 @@ sub main {
         for my $stack_name (@{ $option{stack_name} }) {
             my $events = get_events($stack_name, $option{max_events});
             my %new_max = %max;
-
-            if ( @{ $events->{StackEvents} } > $option{max_events} ) {
-                @{ $events->{StackEvents} } = @{ $events->{StackEvents} }[0 .. $option{max_events}];
-            }
 
             for my $event (@{ $events->{StackEvents} }) {
                 my @time = (split /\D/, $event->{Timestamp})[0 .. 5];
@@ -186,7 +183,7 @@ sub get_events {
     }
 
     my $cmd    = join ' ', @cmd;
-    my $json   = `$cmd 2>/dev/nul`;
+    my $json   = `$cmd 2>/dev/null`;
     my $events = decode_json($json);
 
     while ( my $next_token = $events->{NextToken} ) {
@@ -197,7 +194,11 @@ sub get_events {
         last if $option{max_events} && @{ $events->{StackEvents} } >= $option{max_events};
     }
 
-    return $option{watch} ? { StackEvents => [ reverse @{$events->{StackEvents}} ] }: $events;
+    if ( @{ $events->{StackEvents} } > $option{max_events} ) {
+        @{ $events->{StackEvents} } = @{ $events->{StackEvents} }[0 .. $option{max_events}];
+    }
+
+    return $option{watch} || $option{reverse} ? { StackEvents => [ reverse @{$events->{StackEvents}} ] }: $events;
 }
 
 __DATA__
