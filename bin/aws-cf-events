@@ -175,6 +175,8 @@ sub main {
                     print Dumper decode_json($event->{ResourceProperties});
                 }
             }
+
+            $max{Status} -= 9;
             $last_stack = $stack_name;
         }
 
