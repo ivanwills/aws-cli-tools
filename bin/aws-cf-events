@@ -55,6 +55,7 @@ sub main {
         'stack_name|stack-name|n=s@',
         'timezone|t=s',
         'watch|w!',
+        'wait|W!',
         'verbose|v+',
         'man',
         'help',
@@ -76,9 +77,10 @@ sub main {
     my %seen;
     my @fields = qw/Time Status ResourceType LogicalResourceId/;
     push @fields, 'ResourceStatusReason' if $option{verbose};
-    my %max    = map { $_ => length $_ } @fields;
+    my %max       = map { $_ => length $_ } @fields;
     my @datefilds = qw/year month day hour minute second/;
-    my $describe = "aws cloudformation describe-stacks";
+    my $describe  = "aws cloudformation describe-stacks";
+    my $wait      = $option{wait};
     my $last_stack;
     my $first = 1;
 
@@ -100,8 +102,9 @@ sub main {
 
             if ( ! @names ) {
                 warn "No stacks left\n";
-                last;
+                $wait ? next : last;
             }
+            $wait = 0;
 
             $option{stack_name} = \@names;
         }
