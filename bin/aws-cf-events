@@ -80,8 +80,10 @@ sub main {
     my @datefilds = qw/year month day hour minute second/;
     my $describe = "aws cloudformation describe-stacks";
     my $last_stack;
+    my $first = 1;
 
-    do {
+    while ( $first || $option{watch} ) {
+        $first = 0;
         my $start = time;
         if ( $option{child} ) {
             my @names;
@@ -98,7 +100,7 @@ sub main {
 
             if ( ! @names ) {
                 warn "No stacks left\n";
-                return;
+                last;
             }
 
             $option{stack_name} = \@names;
@@ -180,7 +182,7 @@ sub main {
         }
 
 
-    } while ($option{watch});
+    }
 
     return;
 }
