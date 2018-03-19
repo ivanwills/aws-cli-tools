@@ -29,7 +29,7 @@ my ($name)   = $PROGRAM_NAME =~ m{^.*/(.*?)$}mxs;
 my %option = (
     timezone   => DateTime::TimeZone->new( name => "local" )->name,
     max_events => 20,
-    sleep      => 5,
+    sleep      => 10,
     verbose    => 0,
     man        => 0,
     help       => 0,
@@ -78,6 +78,7 @@ sub main {
     push @fields, 'ResourceStatusReason' if $option{verbose};
     my %max    = map { $_ => length $_ } @fields;
     my @datefilds = qw/year month day hour minute second/;
+    my $describe = "aws cloudformation describe-stacks";
     my $last_stack;
 
     do {
@@ -85,15 +86,25 @@ sub main {
         if ( $option{child} ) {
             my @names;
             for my $stack_name (@{ $option{stack_name} }) {
-                my $parent_id = `aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[].StackId' --output text`;
+                my $parent_id = `$describe --stack-name $stack_name --query 'Stacks[].StackId' --output text 2>&1`;
+                if ( $parent_id =~ /An error occurred/ ) {
+                    warn "Removing $stack_name as it doesn't appear to exist (any more at least)\n";
+                    next;
+                }
                 chomp $parent_id;
-                my @children  = split /\s+/xms, ''.`aws cloudformation describe-stacks --query 'Stacks[?ParentId==\`$parent_id\`].StackName' --output text 2>/dev/null`;
+                my @children  = split /\s+/xms, ''.`$describe --query 'Stacks[?ParentId==\`$parent_id\`].StackName' --output text 2>/dev/null`;
                 push @names, $stack_name, @children;
             }
+
+            if ( ! @names ) {
+                warn "No stacks left\n";
+                return;
+            }
+
             $option{stack_name} = \@names;
         }
 
-        my $count = 0;
+        my $count = ! $last_stack ? 0 : 1;
 
         for my $stack_name (@{ $option{stack_name} }) {
             my $events = get_events($stack_name, $option{max_events});
@@ -121,7 +132,10 @@ sub main {
                 $changed++ if $new_max{$key} != $max{$key};
             }
             %max = %new_max;
+            my $fmt_head = (join '  ', (map {"%-$max{$_}s"} @fields));
 
+            # add non-printing colour number
+            $max{Status} += 9;
             my $fmt = (join '  ', (map {"%-$max{$_}s"} @fields));
             my $last_day = '';
             my $event_count = 0;
@@ -132,10 +146,10 @@ sub main {
 
                 if ( ! $event_count++ ) {
                     if ( @{ $option{stack_name } } > 1 && ( ! $last_stack || $last_stack ne $stack_name ) ) {
-                        print colored(['bold'], $stack_name), "\n";
+                        print "\033[999D\033[K" . colored(['bold'], $stack_name), "\n";
                     }
                     if ($changed) {
-                        print colored(['bold'], sprintf $fmt, @fields), "\n";
+                        print "\033[999D\033[K" . colored(['bold'], sprintf $fmt_head, @fields), "\n";
                     }
                 }
 
@@ -145,11 +159,11 @@ sub main {
                     :                                                      '';
 
                 if ( $event->{Day} ne $last_day ) {
-                    print "$event->{Day}\n";
+                    print "\033[999D\033[K$event->{Day}\n";
                     $last_day = $event->{Day};
                 }
 
-                print colored([$colour], sprintf $fmt, map {$event->{$_}} @fields), "\n";
+                printf "$fmt\n", map {/Status/ ? colored([$colour], $event->{$_}) : $event->{$_}} @fields;
                 if ( $option{verbose} > 1 && $event->{ResourceProperties} ) {
                     local $Data::Dumper::Sortkeys = 1;
                     local $Data::Dumper::Indent   = 1;
@@ -184,7 +198,12 @@ sub get_events {
 
     my $cmd    = join ' ', @cmd;
     my $json   = `$cmd 2>/dev/null`;
-    my $events = decode_json($json);
+    my $events = eval {
+        decode_json($json);
+    } or do {
+        warn "Error procesing JSON: $@\n" if $option{verbose} > 1;
+        return { StackEvents => [] };
+    };
 
     while ( my $next_token = $events->{NextToken} ) {
         $json = `$cmd --starting-token $next_token`;
@@ -226,7 +245,7 @@ This documentation refers to aws-cf-events version 0.0.1
                     The name of the stack to show events for, you can specify
                     this option more than once to see multiple stack events.
   -s --sleep[=]int  When watching this is the time to sleep between checking
-                    for more events (Default 5, in seconds)
+                    for more events (Default 10, in seconds)
   -w --watch        Rather than just listing the stack events, keep showing
                     any new events for the stack as they arrive.
 
