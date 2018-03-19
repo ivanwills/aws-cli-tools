@@ -249,10 +249,17 @@ This documentation refers to aws-cf-events version 0.0.1
   -n --stack-name[=]str
                     The name of the stack to show events for, you can specify
                     this option more than once to see multiple stack events.
+  -r --reverse      Show events from oldest to newest (as happens for --watch)
   -s --sleep[=]int  When watching this is the time to sleep between checking
                     for more events (Default 10, in seconds)
+  -t --timezone[=]str
+                    Set the timezone that events should be shown in (default
+                    is the system timezone)
   -w --watch        Rather than just listing the stack events, keep showing
                     any new events for the stack as they arrive.
+  -W --wait         When --child-stacks is in opperation this will not exit
+                    if the first stack doesn't yet exist but it will once one
+                    stack exists.
 
   -v --verbose      Show reason for the stack event
      --version      Prints the version information
