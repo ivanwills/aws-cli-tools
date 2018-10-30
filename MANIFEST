@@ -1,4 +1,5 @@
-
+bin/aws-cf-events
+bin/s3-find
 Build.PL
 Changes
 lib/AWS/CLI/Tools.pm

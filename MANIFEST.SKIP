@@ -61,3 +61,15 @@ Debian_CPANTS.txt
 
 # Avoid archives of this distribution
 \bAWS-CLI-Tools-[\d\.\_]+
+
+# Other files of interest
+[.].*[.]tag$
+errors.err
+.travis.yml
+.editorconfig
+.vtide.yml
+vim.sh
+vrc.yml
+tmp*
+temp/*
+^MYMETA\.json$
