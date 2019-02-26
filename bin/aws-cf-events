@@ -108,6 +108,11 @@ sub main {
 
             $option{stack_name} = \@names;
         }
+        elsif ( ! $option{stack_name} ) {
+            $option{stack_name} = [
+                split /\s+/xms, ''.`$describe --query 'Stacks[].StackName' --output text 2>/dev/null`
+            ];
+        }
 
         my $count = ! $last_stack ? 0 : 1;
 
